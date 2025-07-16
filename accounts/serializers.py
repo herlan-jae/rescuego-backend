@@ -76,38 +76,52 @@ class UserProfileSerializer(serializers.ModelSerializer):
     def get_full_name(self, obj):
         return f"{obj.user.first_name} {obj.user.last_name}".strip()
 
+
 class DriverProfileSerializer(serializers.ModelSerializer):
     username = serializers.CharField(source='user.username', read_only=True)
     email = serializers.EmailField(source='user.email', read_only=True)
     first_name = serializers.CharField(source='user.first_name', read_only=True)
     last_name = serializers.CharField(source='user.last_name', read_only=True)
     full_name = serializers.SerializerMethodField()
-    
+
+    # FIX: Lebih eksplisit dalam menangani format tanggal.
+    # Ini akan memastikan outputnya selalu "YYYY-MM-DD".
+    date_of_birth = serializers.DateField(format="%Y-%m-%d", input_formats=["%Y-%m-%d"])
+
     class Meta:
         model = DriverProfile
         fields = '__all__'
         read_only_fields = ['user', 'created_at', 'updated_at']
-    
+
     def get_full_name(self, obj):
         return f"{obj.user.first_name} {obj.user.last_name}".strip()
 
+
 class DriverCreateSerializer(serializers.ModelSerializer):
-    # User fields
-    username = serializers.CharField()
-    email = serializers.EmailField()
+    username = serializers.CharField(write_only=True)
+    email = serializers.EmailField(write_only=True)
     password = serializers.CharField(write_only=True, min_length=6)
-    first_name = serializers.CharField()
-    last_name = serializers.CharField()
-    
+    first_name = serializers.CharField(write_only=True)
+    last_name = serializers.CharField(write_only=True)
+
     class Meta:
         model = DriverProfile
         fields = ['username', 'email', 'password', 'first_name', 'last_name',
-                 'driver_license_number', 'phone_number', 'city', 'address', 
-                 'date_of_birth', 'experience_years', 'emergency_contact_name', 
-                 'emergency_contact_phone']
-    
+                  'driver_license_number', 'phone_number', 'city', 'address',
+                  'date_of_birth', 'experience_years', 'emergency_contact_name',
+                  'emergency_contact_phone']
+
+    def validate_username(self, value):
+        if User.objects.filter(username=value).exists():
+            raise serializers.ValidationError("A user with that username already exists.")
+        return value
+
+    def validate_email(self, value):
+        if User.objects.filter(email=value).exists():
+            raise serializers.ValidationError("A user with that email already exists.")
+        return value
+
     def create(self, validated_data):
-        # Extract user data
         user_data = {
             'username': validated_data.pop('username'),
             'email': validated_data.pop('email'),
@@ -115,14 +129,14 @@ class DriverCreateSerializer(serializers.ModelSerializer):
             'first_name': validated_data.pop('first_name'),
             'last_name': validated_data.pop('last_name'),
         }
-        
-        # Create user
+
         user = User.objects.create_user(**user_data)
-        
-        # Create driver profile
         driver_profile = DriverProfile.objects.create(user=user, **validated_data)
-        
         return driver_profile
+
+    def to_representation(self, instance):
+        serializer = DriverProfileSerializer(instance, context=self.context)
+        return serializer.data
 
 class UserDetailSerializer(serializers.ModelSerializer):
     profile = serializers.SerializerMethodField()

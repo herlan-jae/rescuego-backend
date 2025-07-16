@@ -25,7 +25,6 @@ class UserProfile(models.Model):
 
 
 class DriverProfile(models.Model):
-    """Profile untuk driver ambulans"""
     DRIVER_STATUS_CHOICES = [
         ('available', 'Available'),
         ('busy', 'Busy'),
