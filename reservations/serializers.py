@@ -39,6 +39,23 @@ class ReservationListSerializer(serializers.ModelSerializer):
             'assigned_ambulance_plate', 'requested_at', 'completed_at'
         ]
 
+class AvailableDriverSerializer(serializers.ModelSerializer):
+    full_name = serializers.CharField(source='user.get_full_name', read_only=True)
+    status_display = serializers.CharField(source='get_status_display', read_only=True)
+
+    class Meta:
+        model = DriverProfile
+        fields = ['id', 'full_name', 'status_display']
+
+class AvailableAmbulanceSerializer(serializers.ModelSerializer):
+    # PERBAIKAN DI SINI: Gunakan 'ambulance_type' sebagai source untuk field 'type'
+    type = serializers.CharField(source='get_ambulance_type_display', read_only=True) # Untuk menampilkan 'Basic Life Support (BLS)' dll.
+
+    class Meta:
+        model = Ambulance
+        # Pastikan 'type' ada di fields, dan source-nya mengarah ke get_ambulance_type_display
+        fields = ['id', 'license_plate', 'type']
+
 class ReservationDetailSerializer(serializers.ModelSerializer):
     user_details = serializers.SerializerMethodField()
     assigned_driver_details = serializers.SerializerMethodField()

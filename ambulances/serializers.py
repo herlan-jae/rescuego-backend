@@ -2,6 +2,7 @@ from rest_framework import serializers
 from .models import Ambulance, AmbulanceAssignment
 
 class AmbulanceSerializer(serializers.ModelSerializer):
+    type = serializers.CharField(source='get_ambulance_type_display', read_only=True)
     current_driver_name = serializers.CharField(source='current_driver.user.get_full_name', read_only=True)
     ambulance_type_display = serializers.CharField(source='get_ambulance_type_display', read_only=True)
     status_display = serializers.CharField(source='get_status_display', read_only=True)

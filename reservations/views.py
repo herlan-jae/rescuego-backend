@@ -8,7 +8,7 @@ from .models import Reservation, ReservationStatusLog
 from .serializers import (
     ReservationCreateSerializer, ReservationListSerializer, ReservationDetailSerializer,
     ReservationStatusUpdateSerializer, ReservationAssignmentSerializer,
-    ReservationStatusLogSerializer
+    ReservationStatusLogSerializer, AvailableDriverSerializer, AvailableAmbulanceSerializer
 )
 from ambulances.models import Ambulance
 from accounts.models import DriverProfile
@@ -175,12 +175,13 @@ def available_drivers_ambulances(request):
     if city:
         ambulances_qs = ambulances_qs.filter(base_location=city)
 
-    drivers_data = [{'id': driver.id, 'name': driver.user.get_full_name()} for driver in drivers_qs]
-    ambulances_data = [{'id': ambulance.id, 'license_plate': ambulance.license_plate} for ambulance in ambulances_qs]
+    # PERBAIKAN: Gunakan Serializer untuk mengembalikan data yang diformat
+    drivers_data = AvailableDriverSerializer(drivers_qs, many=True).data
+    ambulances_data = AvailableAmbulanceSerializer(ambulances_qs, many=True).data
 
     return Response({
-        'drivers': drivers_data,
-        'ambulances': ambulances_data
+        'available_drivers': drivers_data, # <-- Ganti 'drivers' menjadi 'available_drivers'
+        'available_ambulances': ambulances_data # <-- Ganti 'ambulances' menjadi 'available_ambulances'
     })
 
 
