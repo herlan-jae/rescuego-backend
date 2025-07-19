@@ -12,7 +12,7 @@ from .serializers import (
 )
 from ambulances.models import Ambulance
 from accounts.models import DriverProfile
-from django.db import models
+from django.db import models, transaction
 from rest_framework.exceptions import PermissionDenied
 
 
@@ -87,17 +87,42 @@ class ReservationStatusUpdateView(generics.UpdateAPIView):
 
     def get_queryset(self):
         user = self.request.user
-
         if not user.is_authenticated:
             return Reservation.objects.none()
-
         if user.is_staff:
             return Reservation.objects.all()
         elif hasattr(user, 'driver_profile'):
             return Reservation.objects.filter(assigned_driver=user.driver_profile)
-        else:
-            # Use the correct exception import
-            raise PermissionDenied("Only drivers and admins can update reservation status")
+        raise PermissionDenied("Only drivers and admins can update reservation status")
+
+    def update(self, request, *args, **kwargs):
+        # Gunakan transaction untuk memastikan semua update berhasil atau tidak sama sekali
+        with transaction.atomic():
+            # Dapatkan objek reservasi sebelum diupdate
+            instance = self.get_object()
+            new_status = request.data.get('status')
+
+            # Panggil method update asli untuk mengubah status reservasi
+            response = super().update(request, *args, **kwargs)
+
+            # PERIKSA JIKA UPDATE BERHASIL DAN STATUSNYA 'COMPLETED'
+            if response.status_code == 200 and new_status == 'completed':
+                
+                # Jika ada driver yang ditugaskan, ubah statusnya menjadi 'available'
+                if instance.assigned_driver:
+                    driver = instance.assigned_driver
+                    driver.status = 'available'
+                    driver.save()
+
+                # Jika ada ambulans yang ditugaskan, ubah juga statusnya
+                if instance.assigned_ambulance:
+                    ambulance = instance.assigned_ambulance
+                    ambulance.status = 'available'
+                    ambulance.current_driver = None # Kosongkan driver saat ini dari ambulans
+                    ambulance.save()
+            
+            # Kembalikan respons asli dari method update
+            return response
 
 
 @api_view(['POST'])
