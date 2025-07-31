@@ -1,9 +1,8 @@
-# accounts/serializers.py
-
 from rest_framework import serializers
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate
 from .models import UserProfile, DriverProfile
+from ambulances.models import Ambulance
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, min_length=6)
@@ -21,15 +20,12 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         return attrs
     
     def create(self, validated_data):
-        # Remove fields yang tidak ada di User model
         city = validated_data.pop('city')
         phone_number = validated_data.pop('phone_number', '')
         validated_data.pop('password_confirm')
         
-        # Create user
         user = User.objects.create_user(**validated_data)
         
-        # Update atau create UserProfile
         user_profile, created = UserProfile.objects.get_or_create(
             user=user,
             defaults={'city': city, 'phone_number': phone_number}
@@ -83,18 +79,31 @@ class DriverProfileSerializer(serializers.ModelSerializer):
     first_name = serializers.CharField(source='user.first_name', read_only=True)
     last_name = serializers.CharField(source='user.last_name', read_only=True)
     full_name = serializers.SerializerMethodField()
-
-    # FIX: Lebih eksplisit dalam menangani format tanggal.
-    # Ini akan memastikan outputnya selalu "YYYY-MM-DD".
     date_of_birth = serializers.DateField(format="%Y-%m-%d", input_formats=["%Y-%m-%d"])
+    assigned_vehicle = serializers.SerializerMethodField()
 
     class Meta:
         model = DriverProfile
-        fields = '__all__'
+        fields = [
+            'id', 'user', 'username', 'email', 'first_name', 'last_name', 'full_name',
+            'driver_license_number', 'phone_number', 'city', 'address', 'date_of_birth',
+            'hire_date', 'status', 'experience_years', 'emergency_contact_name',
+            'emergency_contact_phone', 'is_active', 'assigned_vehicle'
+        ]
         read_only_fields = ['user', 'created_at', 'updated_at']
 
     def get_full_name(self, obj):
         return f"{obj.user.first_name} {obj.user.last_name}".strip()
+    
+    def get_assigned_vehicle(self, obj):
+        """Mencari ambulans yang saat ini sedang dikemudikan oleh supir ini."""
+        ambulance = Ambulance.objects.filter(current_driver=obj).first()
+        if ambulance:
+            return {
+                'id': ambulance.id,
+                'license_plate': ambulance.license_plate
+            }
+        return None
 
 
 class DriverCreateSerializer(serializers.ModelSerializer):

@@ -1,10 +1,10 @@
-from rest_framework import generics, permissions
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
 from .models import Ambulance, AmbulanceAssignment
 from .serializers import AmbulanceSerializer, AmbulanceAssignmentSerializer
+from .permissions import IsAdminOrAssignedDriver
 
 class AmbulanceListCreateView(generics.ListCreateAPIView):
     """List ambulances or create new ambulance (Admin only for create)"""
@@ -22,14 +22,15 @@ class AmbulanceListCreateView(generics.ListCreateAPIView):
         return [permissions.IsAuthenticated()]
 
 class AmbulanceDetailView(generics.RetrieveUpdateDestroyAPIView):
-    """Ambulance detail, update, delete (Admin only for modify)"""
+    """Ambulance detail, update, delete (Admin or Assigned Driver only for modify)"""
     queryset = Ambulance.objects.all()
     serializer_class = AmbulanceSerializer
-    
-    def get_permissions(self):
-        if self.request.method in ['PUT', 'PATCH', 'DELETE']:
-            return [permissions.IsAdminUser()]
-        return [permissions.IsAuthenticated()]
+    permission_classes = [IsAdminOrAssignedDriver] 
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        self.perform_destroy(instance)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 class AmbulanceAssignmentListView(generics.ListCreateAPIView):
     """List and create ambulance assignments (Admin only)"""

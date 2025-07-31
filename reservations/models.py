@@ -1,5 +1,3 @@
-# reservations/models.py
-
 from django.db import models
 from django.contrib.auth.models import User
 from django.utils import timezone
@@ -33,22 +31,19 @@ class Reservation(models.Model):
         ('other', 'Other'),
     ]
     
-    # Data Reservasi
     reservation_id = models.CharField(max_length=20, unique=True, editable=False)
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reservations')
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
     priority = models.CharField(max_length=20, choices=PRIORITY_CHOICES, default='medium')
     emergency_type = models.CharField(max_length=20, choices=EMERGENCY_TYPE_CHOICES)
     
-    # Informasi Pasien
     patient_name = models.CharField(max_length=100)
     patient_age = models.PositiveIntegerField()
     patient_gender = models.CharField(max_length=10, choices=[('male', 'Male'), ('female', 'Female')])
-    patient_condition = models.TextField()  # kondisi pasien
-    medical_history = models.TextField(blank=True)  # riwayat medis
-    current_symptoms = models.TextField()  # gejala saat ini
+    patient_condition = models.TextField()
+    medical_history = models.TextField(blank=True)
+    current_symptoms = models.TextField()
     
-    # Lokasi
     pickup_address = models.TextField()
     pickup_city = models.CharField(max_length=100)
     pickup_latitude = models.DecimalField(max_digits=10, decimal_places=7, null=True, blank=True)
@@ -59,7 +54,6 @@ class Reservation(models.Model):
     destination_latitude = models.DecimalField(max_digits=10, decimal_places=7, null=True, blank=True)
     destination_longitude = models.DecimalField(max_digits=10, decimal_places=7, null=True, blank=True)
     
-    # Assignment
     assigned_ambulance = models.ForeignKey(
         Ambulance, 
         on_delete=models.SET_NULL, 
@@ -75,12 +69,10 @@ class Reservation(models.Model):
         related_name='reservations'
     )
     
-    # Kontak Darurat
     emergency_contact_name = models.CharField(max_length=100)
     emergency_contact_phone = models.CharField(max_length=15)
     emergency_contact_relationship = models.CharField(max_length=50)
     
-    # Timestamps
     requested_at = models.DateTimeField(default=timezone.now)
     accepted_at = models.DateTimeField(null=True, blank=True)
     pickup_started_at = models.DateTimeField(null=True, blank=True)
@@ -88,8 +80,7 @@ class Reservation(models.Model):
     arrived_at_destination = models.DateTimeField(null=True, blank=True)
     completed_at = models.DateTimeField(null=True, blank=True)
     
-    # Additional Info
-    special_requirements = models.TextField(blank=True)  # kebutuhan khusus
+    special_requirements = models.TextField(blank=True)
     estimated_cost = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     actual_cost = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     payment_status = models.CharField(
@@ -102,13 +93,12 @@ class Reservation(models.Model):
         default='pending'
     )
     notes = models.TextField(blank=True)
-    driver_notes = models.TextField(blank=True)  # catatan dari driver
+    driver_notes = models.TextField(blank=True)
     
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
     
     def save(self, *args, **kwargs):
-        # Generate reservation ID
         if not self.reservation_id:
             from datetime import datetime
             timestamp = datetime.now().strftime('%Y%m%d%H%M%S')

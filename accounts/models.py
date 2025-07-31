@@ -1,5 +1,3 @@
-# accounts/models.py
-
 from django.contrib.auth.models import User
 from django.db import models
 from django.utils import timezone
@@ -38,7 +36,7 @@ class DriverProfile(models.Model):
     city = models.CharField(max_length=100)
     address = models.TextField()
     date_of_birth = models.DateField()
-    hire_date = models.DateField(default=timezone.now)
+    hire_date = models.DateField(default=timezone.localdate)
     status = models.CharField(max_length=20, choices=DRIVER_STATUS_CHOICES, default='available')
     experience_years = models.PositiveIntegerField(default=0)
     emergency_contact_name = models.CharField(max_length=100)
@@ -55,7 +53,6 @@ class DriverProfile(models.Model):
         verbose_name_plural = "Driver Profiles"
 
 
-# Signal untuk auto-create profile
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 

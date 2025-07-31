@@ -35,13 +35,10 @@ class MaintenanceRequestListView(generics.ListAPIView):
         user = self.request.user
         
         if user.is_staff:
-            # Admin can see all maintenance requests
             return MaintenanceRequest.objects.all()
         elif hasattr(user, 'driver_profile'):
-            # Driver can only see their own requests
             return MaintenanceRequest.objects.filter(requested_by=user.driver_profile)
         else:
-            # Regular users cannot see maintenance requests
             return MaintenanceRequest.objects.none()
 
 class MaintenanceRequestDetailView(generics.RetrieveAPIView):
@@ -80,7 +77,6 @@ def approve_maintenance_request(request, pk):
             status=status.HTTP_400_BAD_REQUEST
         )
     
-    # Update status
     old_status = maintenance_request.status
     maintenance_request.status = 'approved'
     maintenance_request.reviewed_at = timezone.now()
@@ -89,11 +85,9 @@ def approve_maintenance_request(request, pk):
     maintenance_request.estimated_cost = request.data.get('estimated_cost')
     maintenance_request.save()
     
-    # Update ambulance status
     maintenance_request.ambulance.status = 'maintenance'
     maintenance_request.ambulance.save()
     
-    # Create status log
     MaintenanceStatusLog.objects.create(
         maintenance_request=maintenance_request,
         previous_status=old_status,
@@ -129,7 +123,6 @@ def reject_maintenance_request(request, pk):
             status=status.HTTP_400_BAD_REQUEST
         )
     
-    # Update status
     old_status = maintenance_request.status
     maintenance_request.status = 'rejected'
     maintenance_request.reviewed_at = timezone.now()
@@ -137,7 +130,6 @@ def reject_maintenance_request(request, pk):
     maintenance_request.rejection_reason = rejection_reason
     maintenance_request.save()
     
-    # Create status log
     MaintenanceStatusLog.objects.create(
         maintenance_request=maintenance_request,
         previous_status=old_status,
@@ -202,17 +194,14 @@ def maintenance_stats(request):
     
     from django.db.models import Count
     
-    # Request stats by status
     status_stats = MaintenanceRequest.objects.values('status').annotate(
         count=Count('id')
     ).order_by('status')
     
-    # Request stats by type
     type_stats = MaintenanceRequest.objects.values('request_type').annotate(
         count=Count('id')
     ).order_by('request_type')
     
-    # Overdue schedules count
     overdue_count = MaintenanceSchedule.objects.filter(
         next_due__lt=timezone.now(),
         is_active=True

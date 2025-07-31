@@ -1,5 +1,3 @@
-# ambulances/models.py
-
 from django.db import models
 from django.utils import timezone
 from accounts.models import DriverProfile
@@ -25,7 +23,7 @@ class Ambulance(models.Model):
     brand = models.CharField(max_length=50)
     model = models.CharField(max_length=50)
     year = models.PositiveIntegerField()
-    capacity = models.PositiveIntegerField(default=2)  # jumlah pasien yang bisa ditampung
+    capacity = models.PositiveIntegerField(default=1)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='available')
     current_driver = models.ForeignKey(
         DriverProfile, 
@@ -34,13 +32,13 @@ class Ambulance(models.Model):
         blank=True,
         related_name='current_ambulance'
     )
-    base_location = models.CharField(max_length=100)  # lokasi pangkalan
-    current_location = models.CharField(max_length=200, blank=True)  # lokasi saat ini
+    base_location = models.CharField(max_length=100)
+    current_location = models.CharField(max_length=200, blank=True)
     last_maintenance_date = models.DateField(null=True, blank=True)
     next_maintenance_date = models.DateField(null=True, blank=True)
-    mileage = models.PositiveIntegerField(default=0)  # kilometer
+    mileage = models.PositiveIntegerField(default=0)
     fuel_capacity = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    equipment_list = models.TextField(blank=True)  # daftar peralatan medis
+    equipment_list = models.TextField(blank=True)
     notes = models.TextField(blank=True)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(default=timezone.now)

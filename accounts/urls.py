@@ -7,6 +7,7 @@ app_name = 'accounts'
 urlpatterns = [
     path('api/register/', views.UserRegistrationView.as_view(), name='api_register'),
     path('api/login/', views.UserLoginView.as_view(), name='api_login'),
+    path('api/logout/', views.LogoutAPIView.as_view(), name='api_logout'),
     path('api/token/refresh/', TokenRefreshView.as_view(), name='api_token_refresh'),
     path('api/profile/', views.UserProfileView.as_view(), name='api_profile'),
     path('api/driver/profile/', views.DriverProfileView.as_view(), name='api_driver_profile'),
@@ -14,4 +15,6 @@ urlpatterns = [
     path('api/drivers/', views.DriverListCreateView.as_view(), name='api_drivers'),
     path('api/drivers/<int:pk>/', views.DriverDetailView.as_view(), name='api_driver_detail'),
     path('api/dashboard/', views.user_dashboard_data, name='api_dashboard'),
+    path('api/users/', views.UserListView.as_view(), name='api_user_list'),
+    path('api/users/<int:pk>/', views.UserDetailView.as_view(), name='api_user_detail'),
 ]

@@ -1,5 +1,3 @@
-# maintenance/models.py
-
 from django.db import models
 from django.contrib.auth.models import User
 from django.utils import timezone
@@ -32,28 +30,23 @@ class MaintenanceRequest(models.Model):
         ('critical', 'Critical'),
     ]
     
-    # Basic Info
     request_id = models.CharField(max_length=20, unique=True, editable=False)
     ambulance = models.ForeignKey(Ambulance, on_delete=models.CASCADE, related_name='maintenance_requests')
     requested_by = models.ForeignKey(DriverProfile, on_delete=models.CASCADE, related_name='maintenance_requests')
     request_type = models.CharField(max_length=20, choices=REQUEST_TYPE_CHOICES)
     priority = models.CharField(max_length=20, choices=PRIORITY_CHOICES, default='medium')
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
-    
-    # Description
     title = models.CharField(max_length=200)
     description = models.TextField()
-    symptoms = models.TextField(blank=True)  # gejala kerusakan
+    symptoms = models.TextField(blank=True)
     current_mileage = models.PositiveIntegerField()
     
-    # Maintenance Details
     estimated_cost = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     actual_cost = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
-    estimated_duration = models.CharField(max_length=100, blank=True)  # estimasi waktu (contoh: "2-3 hari")
+    estimated_duration = models.CharField(max_length=100, blank=True)
     parts_needed = models.TextField(blank=True)
-    external_vendor = models.CharField(max_length=200, blank=True)  # jika menggunakan vendor luar
+    external_vendor = models.CharField(max_length=200, blank=True)
     
-    # Admin Response
     reviewed_by = models.ForeignKey(
         User, 
         on_delete=models.SET_NULL, 
@@ -64,13 +57,11 @@ class MaintenanceRequest(models.Model):
     admin_notes = models.TextField(blank=True)
     rejection_reason = models.TextField(blank=True)
     
-    # Timestamps
     requested_at = models.DateTimeField(default=timezone.now)
     reviewed_at = models.DateTimeField(null=True, blank=True)
     work_started_at = models.DateTimeField(null=True, blank=True)
     completed_at = models.DateTimeField(null=True, blank=True)
     
-    # Completion Info
     work_performed = models.TextField(blank=True)
     parts_used = models.TextField(blank=True)
     technician_notes = models.TextField(blank=True)
@@ -80,7 +71,6 @@ class MaintenanceRequest(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     
     def save(self, *args, **kwargs):
-        # Generate request ID
         if not self.request_id:
             from datetime import datetime
             timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
@@ -137,7 +127,7 @@ class MaintenanceSchedule(models.Model):
     ambulance = models.ForeignKey(Ambulance, on_delete=models.CASCADE, related_name='maintenance_schedules')
     schedule_type = models.CharField(max_length=20, choices=SCHEDULE_TYPE_CHOICES)
     description = models.TextField()
-    frequency_days = models.PositiveIntegerField()  # setiap berapa hari
+    frequency_days = models.PositiveIntegerField() 
     last_performed = models.DateTimeField(null=True, blank=True)
     next_due = models.DateTimeField()
     is_active = models.BooleanField(default=True)

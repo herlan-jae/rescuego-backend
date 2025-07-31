@@ -10,7 +10,6 @@ class MaintenanceRequestCreateSerializer(serializers.ModelSerializer):
         ]
     
     def create(self, validated_data):
-        # Set requested_by dari driver profile yang login
         user = self.context['request'].user
         if hasattr(user, 'driver_profile'):
             validated_data['requested_by'] = user.driver_profile
@@ -95,10 +94,8 @@ class MaintenanceRequestUpdateSerializer(serializers.ModelSerializer):
         old_status = instance.status
         new_status = validated_data.get('status', instance.status)
         
-        # Update maintenance request
         instance = super().update(instance, validated_data)
         
-        # Create status log
         if old_status != new_status:
             MaintenanceStatusLog.objects.create(
                 maintenance_request=instance,
@@ -108,7 +105,6 @@ class MaintenanceRequestUpdateSerializer(serializers.ModelSerializer):
                 notes=validated_data.get('admin_notes', '')
             )
             
-            # Update timestamps
             from django.utils import timezone
             now = timezone.now()
             
@@ -119,7 +115,6 @@ class MaintenanceRequestUpdateSerializer(serializers.ModelSerializer):
                 instance.work_started_at = now
             elif new_status == 'completed':
                 instance.completed_at = now
-                # Update ambulance status
                 if validated_data.get('is_ambulance_operational', True):
                     instance.ambulance.status = 'available'
                 else:

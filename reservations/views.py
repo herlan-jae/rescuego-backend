@@ -22,7 +22,6 @@ class ReservationCreateView(generics.CreateAPIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def perform_create(self, serializer):
-        # Only regular users can create reservations
         if self.request.user.is_staff or hasattr(self.request.user, 'driver_profile'):
             raise PermissionDenied("Only regular users can create reservations")
         serializer.save(user=self.request.user)
@@ -41,22 +40,18 @@ class ReservationListView(generics.ListAPIView):
     def get_queryset(self):
         user = self.request.user
 
-        # This check prevents errors during schema generation for anonymous users
         if not user.is_authenticated:
             return Reservation.objects.none()
 
         if user.is_staff:
-            # Admin can see all reservations
             return Reservation.objects.all()
         elif hasattr(user, 'driver_profile'):
-            # Driver can see assigned reservations and pending ones in their city
             driver_city = user.driver_profile.city
             return Reservation.objects.filter(
                 models.Q(assigned_driver=user.driver_profile) |
                 models.Q(status='pending', pickup_city=driver_city)
             )
         else:
-            # User can only see their own reservations
             return Reservation.objects.filter(user=user)
 
 
@@ -74,7 +69,6 @@ class ReservationDetailView(generics.RetrieveAPIView):
         if user.is_staff:
             return Reservation.objects.all()
         elif hasattr(user, 'driver_profile'):
-            # A driver should probably only see details of reservations assigned to them
             return Reservation.objects.filter(assigned_driver=user.driver_profile)
         else:
             return Reservation.objects.filter(user=user)
@@ -96,32 +90,22 @@ class ReservationStatusUpdateView(generics.UpdateAPIView):
         raise PermissionDenied("Only drivers and admins can update reservation status")
 
     def update(self, request, *args, **kwargs):
-        # Gunakan transaction untuk memastikan semua update berhasil atau tidak sama sekali
         with transaction.atomic():
-            # Dapatkan objek reservasi sebelum diupdate
             instance = self.get_object()
             new_status = request.data.get('status')
-
-            # Panggil method update asli untuk mengubah status reservasi
             response = super().update(request, *args, **kwargs)
-
-            # PERIKSA JIKA UPDATE BERHASIL DAN STATUSNYA 'COMPLETED'
             if response.status_code == 200 and new_status == 'completed':
-                
-                # Jika ada driver yang ditugaskan, ubah statusnya menjadi 'available'
                 if instance.assigned_driver:
                     driver = instance.assigned_driver
                     driver.status = 'available'
                     driver.save()
 
-                # Jika ada ambulans yang ditugaskan, ubah juga statusnya
                 if instance.assigned_ambulance:
                     ambulance = instance.assigned_ambulance
                     ambulance.status = 'available'
-                    ambulance.current_driver = None # Kosongkan driver saat ini dari ambulans
+                    ambulance.current_driver = None
                     ambulance.save()
             
-            # Kembalikan respons asli dari method update
             return response
 
 
@@ -151,14 +135,12 @@ def assign_reservation(request, pk):
         except (DriverProfile.DoesNotExist, Ambulance.DoesNotExist):
             return Response({'error': 'Invalid driver or ambulance ID'}, status=status.HTTP_404_NOT_FOUND)
 
-        # Update reservation
         reservation.assigned_driver = driver
         reservation.assigned_ambulance = ambulance
         reservation.status = 'accepted'
         reservation.accepted_at = timezone.now()
         reservation.save()
-
-        # Update driver and ambulance status
+        
         driver.status = 'busy'
         driver.save()
 
@@ -166,7 +148,6 @@ def assign_reservation(request, pk):
         ambulance.current_driver = driver
         ambulance.save()
 
-        # Create status log
         ReservationStatusLog.objects.create(
             reservation=reservation,
             previous_status='pending',
@@ -200,13 +181,12 @@ def available_drivers_ambulances(request):
     if city:
         ambulances_qs = ambulances_qs.filter(base_location=city)
 
-    # PERBAIKAN: Gunakan Serializer untuk mengembalikan data yang diformat
     drivers_data = AvailableDriverSerializer(drivers_qs, many=True).data
     ambulances_data = AvailableAmbulanceSerializer(ambulances_qs, many=True).data
 
     return Response({
-        'available_drivers': drivers_data, # <-- Ganti 'drivers' menjadi 'available_drivers'
-        'available_ambulances': ambulances_data # <-- Ganti 'ambulances' menjadi 'available_ambulances'
+        'available_drivers': drivers_data,
+        'available_ambulances': ambulances_data
     })
 
 

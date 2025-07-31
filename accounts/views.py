@@ -3,12 +3,16 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth.models import User
-from django.contrib.auth import authenticate
 from .models import UserProfile, DriverProfile
 from .serializers import (
     UserRegistrationSerializer, UserLoginSerializer, UserProfileSerializer,
     DriverProfileSerializer, DriverCreateSerializer, UserDetailSerializer
 )
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework.permissions import IsAuthenticated
 
 class UserRegistrationView(generics.CreateAPIView):
     """Register new user"""
@@ -21,7 +25,6 @@ class UserRegistrationView(generics.CreateAPIView):
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
         
-        # Generate tokens
         refresh = RefreshToken.for_user(user)
         
         return Response({
@@ -62,6 +65,18 @@ class UserProfileView(generics.RetrieveUpdateAPIView):
     def get_object(self):
         profile, created = UserProfile.objects.get_or_create(user=self.request.user)
         return profile
+    
+class UserListView(generics.ListAPIView):
+    """View untuk menampilkan daftar semua pengguna (admin only)"""
+    queryset = User.objects.filter(is_staff=False, driver_profile__isnull=True)
+    serializer_class = UserDetailSerializer
+    permission_classes = [permissions.IsAdminUser]
+
+class UserDetailView(generics.RetrieveAPIView):
+    """View untuk menampilkan detail satu pengguna (admin only)"""
+    queryset = User.objects.all()
+    serializer_class = UserDetailSerializer
+    permission_classes = [permissions.IsAdminUser]
 
 class DriverListCreateView(generics.ListCreateAPIView):
     """List drivers or create new driver (Admin only)"""
@@ -83,6 +98,10 @@ class DriverDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = DriverProfile.objects.all()
     serializer_class = DriverProfileSerializer
     permission_classes = [permissions.IsAdminUser]
+
+    def perform_destroy(self, instance):
+        user = instance.user
+        user.delete()
 
 class DriverProfileView(generics.RetrieveUpdateAPIView):
     """Get current driver profile"""
@@ -130,7 +149,6 @@ def user_dashboard_data(request):
     user = request.user
     
     if hasattr(user, 'driver_profile'):
-        # Driver dashboard
         from reservations.models import Reservation
         from maintenance.models import MaintenanceRequest
         
@@ -158,7 +176,6 @@ def user_dashboard_data(request):
         })
     
     elif user.is_staff:
-        # Admin dashboard
         from reservations.models import Reservation
         from maintenance.models import MaintenanceRequest
         from ambulances.models import Ambulance
@@ -189,7 +206,6 @@ def user_dashboard_data(request):
         })
     
     else:
-        # Regular user dashboard
         from reservations.models import Reservation
         
         user_reservations = Reservation.objects.filter(user=user)
@@ -207,3 +223,19 @@ def user_dashboard_data(request):
                 'completed_reservations': completed_reservations,
             }
         })
+        
+class LogoutAPIView(APIView):
+    """
+    View untuk logout user dengan mendaftarkan refresh token ke blacklist.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        try:
+            refresh_token = request.data["refresh"]
+            token = RefreshToken(refresh_token)
+            token.blacklist()
+
+            return Response(status=status.HTTP_205_RESET_CONTENT)
+        except Exception as e:
+            return Response(status=status.HTTP_400_BAD_REQUEST)

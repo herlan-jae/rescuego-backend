@@ -1,5 +1,3 @@
-# reservations/serializers.py
-
 from rest_framework import serializers
 from .models import Reservation, ReservationStatusLog
 from ambulances.models import Ambulance
@@ -19,24 +17,40 @@ class ReservationCreateSerializer(serializers.ModelSerializer):
         ]
     
     def create(self, validated_data):
-        # Set user dari request
         validated_data['user'] = self.context['request'].user
         return super().create(validated_data)
+    
+class NestedDriverSerializer(serializers.ModelSerializer):
+    """Serializer ringan untuk menampilkan info dasar supir."""
+    full_name = serializers.CharField(source='user.get_full_name')
+    class Meta:
+        model = DriverProfile
+        fields = ['id', 'full_name']
+
+class NestedAmbulanceSerializer(serializers.ModelSerializer):
+    """Serializer ringan untuk menampilkan info dasar ambulans."""
+    class Meta:
+        model = Ambulance
+        fields = ['id', 'license_plate']
 
 class ReservationListSerializer(serializers.ModelSerializer):
-    user_name = serializers.CharField(source='user.get_full_name', read_only=True)
-    assigned_driver_name = serializers.CharField(source='assigned_driver.user.get_full_name', read_only=True)
-    assigned_ambulance_plate = serializers.CharField(source='assigned_ambulance.license_plate', read_only=True)
+    """Serializer untuk daftar reservasi yang menyertakan detail bersarang."""
+    assigned_driver_details = NestedDriverSerializer(source='assigned_driver', read_only=True, allow_null=True)
+    assigned_ambulance_details = NestedAmbulanceSerializer(source='assigned_ambulance', read_only=True, allow_null=True)
+    patient_name = serializers.CharField(source='user.get_full_name', read_only=True)
     status_display = serializers.CharField(source='get_status_display', read_only=True)
-    priority_display = serializers.CharField(source='get_priority_display', read_only=True)
     
     class Meta:
         model = Reservation
         fields = [
-            'id', 'reservation_id', 'user_name', 'patient_name', 'patient_age',
-            'emergency_type', 'status', 'status_display', 'priority', 'priority_display',
-            'pickup_city', 'destination_city', 'assigned_driver_name', 
-            'assigned_ambulance_plate', 'requested_at', 'completed_at'
+            'id',
+            'patient_name',
+            'status',
+            'status_display',
+            'requested_at',
+            'destination_address',
+            'assigned_driver_details', 
+            'assigned_ambulance_details',
         ]
 
 class AvailableDriverSerializer(serializers.ModelSerializer):
@@ -48,12 +62,9 @@ class AvailableDriverSerializer(serializers.ModelSerializer):
         fields = ['id', 'full_name', 'status_display']
 
 class AvailableAmbulanceSerializer(serializers.ModelSerializer):
-    # PERBAIKAN DI SINI: Gunakan 'ambulance_type' sebagai source untuk field 'type'
-    type = serializers.CharField(source='get_ambulance_type_display', read_only=True) # Untuk menampilkan 'Basic Life Support (BLS)' dll.
-
+    type = serializers.CharField(source='get_ambulance_type_display', read_only=True)
     class Meta:
         model = Ambulance
-        # Pastikan 'type' ada di fields, dan source-nya mengarah ke get_ambulance_type_display
         fields = ['id', 'license_plate', 'type']
 
 class ReservationDetailSerializer(serializers.ModelSerializer):
@@ -118,10 +129,8 @@ class ReservationStatusUpdateSerializer(serializers.ModelSerializer):
         old_status = instance.status
         new_status = validated_data.get('status', instance.status)
         
-        # Update reservation
         instance = super().update(instance, validated_data)
         
-        # Create status log
         if old_status != new_status:
             ReservationStatusLog.objects.create(
                 reservation=instance,
@@ -131,7 +140,6 @@ class ReservationStatusUpdateSerializer(serializers.ModelSerializer):
                 notes=validated_data.get('driver_notes', '')
             )
             
-            # Update timestamps based on status
             from django.utils import timezone
             now = timezone.now()
             
